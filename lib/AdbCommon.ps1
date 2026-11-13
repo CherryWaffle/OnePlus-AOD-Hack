@@ -47,7 +47,12 @@ function Connect-AodPhone([string]$Serial) {
     Write-Host "Phone: $($script:PhoneModel)  build $build"
 }
 
-function Invoke-PhoneAdb { & $script:Adb -s $script:PhoneSerial @args }
+function Invoke-PhoneAdb {
+    # adb prints progress (and some errors) on stderr. Return it as text so Windows
+    # PowerShell doesn't turn it into a terminating error; callers check results.
+    $ErrorActionPreference = 'Continue'
+    & $script:Adb -s $script:PhoneSerial @args 2>&1 | ForEach-Object { "$_" }
+}
 
 function Invoke-PhoneShell([string]$Command) { Invoke-PhoneAdb shell $Command }
 
