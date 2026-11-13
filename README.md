@@ -75,16 +75,23 @@ downloaded file, choose **Run**). It installs the ready-made app from `prebuilt\
 phone and gives it the one permission it needs. It should end with:
 
 ```
-Installed with the DUMP permission. Open "AOD Keep-On" on the phone and tap Turn on.
+Installed with the DUMP permission. Open "AOD Keep-On" on the phone and choose Always or On a schedule.
 ```
 
 (Prefer to build the app yourself? See [Build it yourself](#build-it-yourself).)
 
-### 5. Turn it on
+### 5. Choose when it stays on
 
-On the phone, open **AOD Keep-On** and tap **Turn on**. It should say **ON**.
+On the phone, open **AOD Keep-On** and pick one:
 
-Lock the phone: the full-screen AOD now stays on.
+- **Always**: the full-screen AOD never times out.
+- **On a schedule**: tap **From** and **To** to set the hours, for example 07:00 to 23:00,
+  or 22:00 to 07:00 overnight. Outside those hours the AOD behaves as stock and turns off
+  after a few seconds. ColorOS has no schedule for the full-screen AOD; this adds one.
+- **Off**: stock behaviour.
+
+The top line shows what's active now, for example *ON now… Turns off at 23:00.* Lock the
+phone: the full-screen AOD now stays on.
 
 ### 6. Turn off USB debugging (optional)
 
@@ -92,9 +99,8 @@ The app doesn't need it any more. You can turn off USB debugging or Developer op
 your phone restarts when you turn Developer options off (OxygenOS 16 does), the app turns
 the AOD back on after the restart by itself.
 
-That's it. **After every restart, the app turns it back on automatically**, even before
-you unlock the phone. To turn it off, open the app and tap **Turn off**; it stays off after
-restarts until you tap **Turn on** again.
+That's it. **The app keeps your choice after every restart** and applies it by itself, even
+before you unlock the phone.
 
 ### Mac or Linux
 
@@ -121,9 +127,11 @@ Keep the `-g`: it gives the app its permission. Then continue with step 5.
 | "Installed, but the DUMP permission was not granted" | Your software blocks it. If Developer options has **Disable permission monitoring**, turn it on and run `install-app.cmd` again. |
 | The app shows "One-time setup needed" | It was installed without its permission (for example by opening the APK on the phone). Run `install-app.cmd` from the PC. |
 | The app says **Unknown** | Your phone's SystemUI doesn't have the switch, so this can't work on it (or a system update removed it). |
-| The app says **OFF** right after Turn on | SystemUI ignored the switch: this phone or software version isn't supported. |
+| The app says **OFF** right after you choose Always | SystemUI ignored the switch: this phone or software version isn't supported. |
 | The app says **ON** but the AOD still turns off | Check you picked a **full-screen** AOD style. AOD also turns off on purpose when the phone is in a pocket or covered. |
-| AOD stops staying on after a restart | Open the app. If it says OFF, tap **Turn on**. If that happens after every restart, allow the app to auto-launch: Settings → Apps → AOD Keep-On → battery / auto launch. |
+| The schedule switches a minute or two late | Normal on ColorOS: it batches app alarms to save battery, so start and end can be up to about 2 minutes late. |
+| At the start time, the AOD doesn't light up by itself | Expected. If the screen is already dark, the AOD comes on the next time the phone goes to sleep (for example after you use it). |
+| AOD stops staying on after a restart, or the schedule stops switching | Open the app: it applies your choice again whenever it opens. If it keeps happening, allow the app to auto-launch: Settings → Apps → AOD Keep-On → battery / auto launch. |
 
 ## Undo everything
 
@@ -164,8 +172,11 @@ options → **Revoke USB debugging authorisations**.
 - **The clock-only AOD style is unaffected**, apart from two small side effects while the
   switch is on: SystemUI's face-down check for AOD turns on, and a *Scheduled* AOD may keep
   its clock updating outside your hours (not tested).
-- **A SystemUI crash clears the switch** without a restart, and the app doesn't notice.
-  Open the app and tap **Turn on**.
+- **If something resets the switch** (a SystemUI crash, for example), the app notices
+  within about 30 minutes and puts it back. Opening the app fixes it straight away.
+- **Schedule timing** can be up to about 2 minutes late, because ColorOS batches app alarms.
+  At the start time a dark screen stays dark; the AOD comes on the next time the phone goes
+  to sleep.
 - **ADB approval expires** if the PC doesn't connect for 7 days, so the phone may ask again
   the next time you plug in.
 - The PC scripts are **Windows only** (PowerShell).
@@ -264,6 +275,15 @@ once:
   (tested).
 - A direct-boot-aware receiver re-applies your last choice after every restart. On the tested
   phone the switch was back on about 9 s after boot, before the first unlock.
+- **Schedule:** exact alarms (`USE_EXACT_ALARM`, granted at install) flip the switch at the
+  start and end times. ColorOS still gives them a delivery window (about 1m43s was observed).
+  The schedule is also re-applied after a clock or time-zone change and after an app update.
+- **Ending a lit AOD:** turning the switch off doesn't hide a full-screen AOD that's already
+  showing, because SystemUI only checks a few seconds after the AOD appears. So after turning
+  it off, the app sends SystemUI's own hide-check broadcast,
+  `com.android.systemui.aod.HIDE_TIME`, and the AOD goes dark within seconds (tested).
+- **Self-check:** every 30 minutes (an inexact alarm, so ColorOS can batch it) the app reads
+  the switch and puts it back if something reset it.
 
 ### AOD brightness
 
