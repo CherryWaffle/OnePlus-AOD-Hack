@@ -22,13 +22,12 @@ Tested on: OnePlus 12 `CPH2573`, build `CPH2573_17.0.0.100(EX01)` (ColorOS 17, A
 Other commands:
 
 ```powershell
-.\aod.ps1 status   # last AOD hide/keep-on log lines; "keep aod on for test!" = working
+.\aod.ps1 status   # is it active right now? (reads SystemUI's live keepAodOn value)
 .\aod.ps1 watch    # live for 30 s (-Seconds N): light reading -> AOD nits, timeout events
 .\aod.ps1 off      # restore the stock timeout (rebooting also does this)
 ```
 
-`status` reads the phone's log, which only holds the last minute or so. If it finds
-nothing, lock the phone and use `watch` instead:
+`watch` shows what the AOD does while the phone is locked:
 
 ```
 23:08:23  AOD started
@@ -119,18 +118,50 @@ It can't be raised without root:
 - `smt userEnablePanoramicAllDay true`, which would set the real all-day flag (the one
   the OnePlus 13 has), has the same `Build.isDebuggable()` check.
 
-## Caveats
+## Limitations and FAQ
 
-- **Reboot = gone.** Re-run `.\aod.ps1 on`.
-- **Battery and burn-in.** The AOD now stays on whenever the phone is face-up and uncovered.
-  Pocket/proximity detection and AOD burn-in protection still run, but this is
-  more panel-on time than OnePlus allows on this model.
+**Does it survive a restart?** No. `keep_aod_on` is a field in SystemUI's memory.
+`setKeepAodOn` only stores it there, and SystemUI sets it to 0 every time it starts. After a
+reboot (or a SystemUI crash), run `.\aod.ps1 on` again. `.\aod.ps1 status` tells you whether
+it is still active.
+
+**Do I need to keep Developer options on?** Only while running the script. The flag lives in
+SystemUI, and ADB is just the way in, so you can turn USB debugging and Developer options off
+afterwards. You need them on again to re-apply after a reboot.
+
+**Does it change the clock-only (partial) AOD?** Not its timeout. The hide that `keep_aod_on`
+skips only runs when the AOD's energy-saving mode is on, and the clock-only style normally has
+it off (the log says `energySaving mode is closed`). Two other places in SystemUI read the flag,
+and they apply to every AOD style while it is set:
+
+- Face-down check: it turns on SystemUI's upside-down check for AOD
+  (`isNeedUpsideDown : true for aod on`), which full-screen AOD otherwise has off.
+- Clock refresh: `isDisplayModeAllowUpdateClock` returns true straight away, skipping its
+  *Scheduled* (time window) check. If you use a schedule, AOD may keep updating outside your
+  hours. Not tested; run `.\aod.ps1 off` if you see that.
+
+Other limitations:
+
+- **Needs ADB after every reboot.** That means a PC, or Wireless debugging plus an on-phone app
+  (see below).
+- **An update can break it.** This is a debug hook. OnePlus already blocks its neighbours
+  (`aod_brightness_debug`, `smt userEnablePanoramicAllDay`) on retail builds, and could do the
+  same to `keep_aod_on`. After an update, check with `.\aod.ps1 status`.
+- **Not OnePlus's real all-day mode.** It skips the hide instead of switching on the all-day
+  logic, so AOD stays lit whenever the phone is face-up and uncovered. Pocket/proximity
+  detection and burn-in protection still run. It still means more battery use and more
+  burn-in risk than OnePlus allows on this panel.
+- **Brightness tops out around 70-100 nits** in bright light (see above).
+- **Windows only, one phone tested.** The scripts are PowerShell. Tested on a OnePlus 12
+  `CPH2573` with build `17.0.0.100`.
+- **ADB approval can expire.** Android forgets a PC after 7 days without a connection, so the
+  phone may ask you to Allow USB debugging again.
 - **SuperDisplay conflict.** SuperDisplay bundles its own older adb
   (`C:\Program Files\SuperDisplay\adb\adb.exe`, v40). When it and the SDK adb (v41) both
   run, they kill each other's server, and the phone may ask for USB-debugging approval again.
   Close SuperDisplay before running the script.
 - **Banking apps** sometimes refuse to run while Developer options / USB debugging are on.
-  The AOD flag stays set if you turn them off after running the script.
+  Turn them off after running the script; the flag stays set.
 
 ## Without a PC
 
