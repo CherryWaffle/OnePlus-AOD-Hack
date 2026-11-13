@@ -16,12 +16,14 @@ function Stop-Setup([string]$Message) {
 function Find-Adb {
     $cmd = Get-Command adb -ErrorAction SilentlyContinue
     if ($cmd) { return $cmd.Source }
-    foreach ($sdk in @($env:ANDROID_HOME, $env:ANDROID_SDK_ROOT, (Join-Path $env:LOCALAPPDATA 'Android\Sdk'))) {
+    # A platform-tools folder unzipped into this project, then the usual SDK locations.
+    $repo = Split-Path $PSScriptRoot -Parent
+    foreach ($sdk in @($repo, $env:ANDROID_HOME, $env:ANDROID_SDK_ROOT, (Join-Path $env:LOCALAPPDATA 'Android\Sdk'))) {
         if (-not $sdk) { continue }
         $path = Join-Path $sdk 'platform-tools\adb.exe'
         if (Test-Path $path) { return $path }
     }
-    Stop-Setup 'adb not found. Install Android Studio (or SDK Platform-Tools) and open it once, or put adb on PATH.'
+    Stop-Setup 'adb not found. Download "SDK Platform-Tools for Windows" from Google and unzip the platform-tools folder into this project folder.'
 }
 
 # Picks the one connected, authorized phone (or the one matching $Serial) and
