@@ -23,7 +23,17 @@ Other commands:
 
 ```powershell
 .\aod.ps1 status   # last AOD hide/keep-on log lines; "keep aod on for test!" = working
+.\aod.ps1 watch    # live for 30 s (-Seconds N): light reading -> AOD nits, timeout events
 .\aod.ps1 off      # restore the stock timeout (rebooting also does this)
+```
+
+`status` reads the phone's log, which only holds the last minute or so. If it finds
+nothing, lock the phone and use `watch` instead:
+
+```
+23:08:23  AOD started
+23:08:25  light    198 lux  ->  AOD  33.1 nits
+23:08:29  timeout fired, skipped (keep_aod_on is active)
 ```
 
 ## How it works
