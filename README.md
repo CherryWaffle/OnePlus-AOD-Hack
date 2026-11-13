@@ -162,9 +162,11 @@ The [phone app](#phone-app) sets it again after every restart. With the scripts 
 it and tap Turn on). `.\aod.ps1 status` or the app shows whether it is active.
 
 **Do I need to keep Developer options on?** With the phone app, only for the one-time
-install. On a OnePlus, turning Developer options off forces a restart, which clears the
-flag; the app sets it again after that restart. With the scripts only, you need USB
-debugging after every restart.
+install. ColorOS 17 turns Developer options off without a restart. The flag lives in
+SystemUI rather than in ADB, so it should stay set (not tested; the test phone was
+restarted anyway). OxygenOS 16 restarts the phone when you turn them off, which clears the
+flag, and the app sets it again after that restart. With the scripts only, you need USB
+debugging to re-apply after every restart.
 
 **Does it change the clock-only (partial) AOD?** Not its timeout. The hide that `keep_aod_on`
 skips only runs when the AOD's energy-saving mode is on, and the clock-only style normally has
@@ -197,8 +199,8 @@ Other limitations:
   run, they kill each other's server, and the phone may ask for USB-debugging approval again.
   Close SuperDisplay before running the script.
 - **Banking apps** sometimes refuse to run while Developer options / USB debugging are on.
-  With the phone app installed you can turn them off; the app re-applies the flag after the
-  restart that follows.
+  With the phone app installed you can turn them off. If your OS restarts the phone to do
+  that, the app re-applies the flag.
 
 ## Credit
 
