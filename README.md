@@ -116,7 +116,8 @@ It can't be raised without root:
 - The same `dumpsys` handler has brightness overrides (`aod_brightness_debug`,
   `aod_lux_debug`). They return early unless `Build.isDebuggable()` is true, which it
   isn't on retail phones.
-- So does `smt userEnablePanoramicAllDay true`, which would set the real all-day flag.
+- `smt userEnablePanoramicAllDay true`, which would set the real all-day flag (the one
+  the OnePlus 13 has), has the same `Build.isDebuggable()` check.
 
 ## Caveats
 
