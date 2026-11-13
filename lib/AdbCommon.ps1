@@ -3,6 +3,9 @@
 
 $KeyguardService = 'com.android.systemui/.keyguard.KeyguardService'
 
+# Settings snapshots live in <repo>\backups (git-ignored).
+$BackupRoot = Join-Path (Split-Path $PSScriptRoot -Parent) 'backups'
+
 function Find-Adb {
     $cmd = Get-Command adb -ErrorAction SilentlyContinue
     if ($cmd) { return $cmd.Source }
@@ -47,3 +50,21 @@ function Connect-AodPhone([string]$Serial) {
 function Invoke-PhoneAdb { & $script:Adb -s $script:PhoneSerial @args }
 
 function Invoke-PhoneShell([string]$Command) { Invoke-PhoneAdb shell $Command }
+
+# Saves `settings list` for secure, global and system to
+# backups\<model>_<timestamp>\. With -IfMissing it does nothing when a snapshot
+# for this phone model already exists.
+function Save-SettingsSnapshot([switch]$IfMissing) {
+    $existing = @(Get-ChildItem $BackupRoot -Directory -Filter "$($script:PhoneModel)_*" -ErrorAction SilentlyContinue)
+    if ($IfMissing -and $existing.Count -gt 0) { return }
+
+    $dir = Join-Path $BackupRoot ('{0}_{1:yyyyMMdd-HHmmss}' -f $script:PhoneModel, (Get-Date))
+    New-Item -ItemType Directory -Force $dir | Out-Null
+    $utf8 = New-Object System.Text.UTF8Encoding($false)
+    foreach ($ns in 'secure', 'global', 'system') {
+        $lines = [string[]]@(Invoke-PhoneShell "settings list $ns")
+        if ($lines.Count -eq 0) { throw "settings list $ns returned nothing." }
+        [System.IO.File]::WriteAllLines((Join-Path $dir "$ns.txt"), $lines, $utf8)
+    }
+    Write-Host "Saved settings snapshot: $dir"
+}
