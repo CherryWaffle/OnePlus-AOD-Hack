@@ -6,12 +6,22 @@ $KeyguardService = 'com.android.systemui/.keyguard.KeyguardService'
 # Settings snapshots live in <repo>\backups (git-ignored).
 $BackupRoot = Join-Path (Split-Path $PSScriptRoot -Parent) 'backups'
 
+# Setup problems (no phone, no adb, ...) are the user's to fix: print one plain line
+# instead of a PowerShell error block, and stop.
+function Stop-Setup([string]$Message) {
+    Write-Host $Message -ForegroundColor Red
+    exit 1
+}
+
 function Find-Adb {
     $cmd = Get-Command adb -ErrorAction SilentlyContinue
     if ($cmd) { return $cmd.Source }
-    $sdk = Join-Path $env:LOCALAPPDATA 'Android\Sdk\platform-tools\adb.exe'
-    if (Test-Path $sdk) { return $sdk }
-    throw 'adb not found. Install Android SDK platform-tools and put adb on PATH.'
+    foreach ($sdk in @($env:ANDROID_HOME, $env:ANDROID_SDK_ROOT, (Join-Path $env:LOCALAPPDATA 'Android\Sdk'))) {
+        if (-not $sdk) { continue }
+        $path = Join-Path $sdk 'platform-tools\adb.exe'
+        if (Test-Path $path) { return $path }
+    }
+    Stop-Setup 'adb not found. Install Android Studio (or SDK Platform-Tools) and open it once, or put adb on PATH.'
 }
 
 # Picks the one connected, authorized phone (or the one matching $Serial) and
@@ -21,24 +31,26 @@ function Connect-AodPhone([string]$Serial) {
     try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch { }
 
     $script:Adb = Find-Adb
-    $devices = @(& $script:Adb devices | Select-Object -Skip 1 | Where-Object { $_ -match '\S' } | ForEach-Object {
+    # adb prints "daemon started" notes on stderr; only the device list matters here.
+    $ErrorActionPreference = 'Continue'
+    $devices = @(& $script:Adb devices 2>$null | Select-Object -Skip 1 | Where-Object { $_ -match '\S' } | ForEach-Object {
             $parts = $_ -split '\s+'
             [pscustomobject]@{ Serial = $parts[0]; State = $parts[1] }
         })
     if ($Serial) { $devices = @($devices | Where-Object { $_.Serial -eq $Serial }) }
 
     if ($devices.Count -eq 0) {
-        throw 'No phone found. Plug it in over USB with USB debugging on (or connect wireless debugging).'
+        Stop-Setup 'No phone found. Plug it in with a data cable and turn on USB debugging.'
     }
     if ($devices.Count -gt 1) {
-        throw ("Several devices connected; pick one with -Serial: " + (($devices | ForEach-Object Serial) -join ', '))
+        Stop-Setup ("Several devices connected; pick one with -Serial: " + (($devices | ForEach-Object Serial) -join ', '))
     }
     $dev = $devices[0]
     if ($dev.State -eq 'unauthorized') {
-        throw 'Phone is unauthorized: unlock it and tap Allow on the USB debugging prompt (tick "Always allow").'
+        Stop-Setup 'Phone is unauthorized: unlock it and tap Allow on the USB debugging prompt (tick "Always allow").'
     }
     if ($dev.State -ne 'device') {
-        throw "Phone state is '$($dev.State)', expected 'device'."
+        Stop-Setup "Phone state is '$($dev.State)'. Unplug it, plug it back in and try again."
     }
 
     $script:PhoneSerial = $dev.Serial
