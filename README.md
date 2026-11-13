@@ -14,6 +14,7 @@ This project keeps it on using a hidden switch that is already in the phone's Sy
 - [Undo everything](#undo-everything)
 - [Things to know](#things-to-know)
 - [Without the app (PC scripts)](#without-the-app-pc-scripts)
+- [Build it yourself](#build-it-yourself)
 - [How it works](#how-it-works)
 
 ## Is this for my phone?
@@ -40,11 +41,9 @@ Xiaomi and other brands don't have this switch, so it can't work there.
 
 ### What you need
 
-- A **Windows PC** and a USB **data** cable.
-- **[Android Studio](https://developer.android.com/studio)** (free). Install it and open it
-  once: its setup wizard downloads the Android SDK. That gives the installer everything it
-  needs (adb, the SDK, and Java). If you already have the Android SDK and a JDK 17+, that
-  works too (set `ANDROID_HOME` / `JAVA_HOME` if they're in unusual places).
+- A **Windows PC** and a USB **data** cable. (On Mac or Linux, see
+  [Mac or Linux](#mac-or-linux).)
+- Google's **SDK Platform-Tools** (adb), a small free download. You don't need Android Studio.
 
 ### 1. Pick the full-screen AOD on the phone
 
@@ -61,19 +60,25 @@ Lock the phone. If the AOD disappears after about 5 seconds, you're in the right
 3. Plug the phone into the PC. On the phone, tap **Allow** on "Allow USB debugging?" and tick
    **Always allow from this computer**.
 
-### 3. Download this project
+### 3. Download this project and adb
 
-On GitHub: **Code → Download ZIP**, then extract it. (Or `git clone` it.)
+1. On GitHub: **Code → Download ZIP**, then extract it. (Or `git clone` it.)
+2. Download **SDK Platform-Tools for Windows** from
+   [developer.android.com/tools/releases/platform-tools](https://developer.android.com/tools/releases/platform-tools)
+   and unzip it. Move the `platform-tools` folder into the project folder, next to
+   `install-app.cmd`. (If adb is already on your PATH or in an Android SDK, skip this.)
 
 ### 4. Install the app
 
-In the extracted folder, double-click **`install-app.cmd`** (if Windows asks whether to run a
-downloaded file, choose **Run**). It builds the app, installs it on the phone and gives it the
-one permission it needs. It should end with:
+In the project folder, double-click **`install-app.cmd`** (if Windows asks whether to run a
+downloaded file, choose **Run**). It installs the ready-made app from `prebuilt\` on the
+phone and gives it the one permission it needs. It should end with:
 
 ```
-Installed with the DUMP permission. Open "AOD Keep-On" on the phone.
+Installed with the DUMP permission. Open "AOD Keep-On" on the phone and tap Turn on.
 ```
+
+(Prefer to build the app yourself? See [Build it yourself](#build-it-yourself).)
 
 ### 5. Turn it on
 
@@ -91,15 +96,28 @@ That's it. **After every restart, the app turns it back on automatically**, even
 you unlock the phone. To turn it off, open the app and tap **Turn off**; it stays off after
 restarts until you tap **Turn on** again.
 
+### Mac or Linux
+
+The `.cmd` and `.ps1` files are Windows-only, but the app isn't. Install SDK Platform-Tools
+for your system, turn on USB debugging (step 2), and in the project folder run:
+
+```
+adb install -r -g prebuilt/AodKeepOn.apk
+```
+
+Keep the `-g`: it gives the app its permission. Then continue with step 5.
+
 ## Troubleshooting
 
 | What you see | What to do |
 |---|---|
 | Windows says "running scripts is disabled" | Use the `.cmd` files (double-click). They run the scripts with a one-time bypass. |
+| "adb not found" | Unzip Google's SDK Platform-Tools and put the `platform-tools` folder inside the project folder (step 3). |
 | "No phone found" | Use a data cable (not charge-only), check USB debugging is on, try another USB port. |
 | "Phone is unauthorized" | Unlock the phone and tap **Allow** on the USB debugging prompt. |
 | The phone keeps asking to allow USB debugging, or you see "adb server version doesn't match" | Another program on the PC runs its own copy of adb (for example SuperDisplay or a phone-mirroring tool). Close it and try again. |
-| "Android SDK not found" or "JDK 17+ not found" | Install Android Studio and open it once, or set `ANDROID_HOME` / `JAVA_HOME`. |
+| "signed with a different key" | You have a copy of the app built with another key (for example your own build). Uninstall AOD Keep-On from the phone and run `install-app.cmd` again. |
+| "Android SDK not found" or "JDK 17+ not found" (only `build-app.cmd`) | Install Android Studio and open it once, or set `ANDROID_HOME` / `JAVA_HOME`. Or use `install-app.cmd`, which doesn't need them. |
 | "Installed, but the DUMP permission was not granted" | Your software blocks it. If Developer options has **Disable permission monitoring**, turn it on and run `install-app.cmd` again. |
 | The app shows "One-time setup needed" | It was installed without its permission (for example by opening the APK on the phone). Run `install-app.cmd` from the PC. |
 | The app says **Unknown** | Your phone's SystemUI doesn't have the switch, so this can't work on it (or a system update removed it). |
@@ -175,12 +193,33 @@ Other commands:
 23:08:29  timeout fired, skipped (keep_aod_on is active)
 ```
 
-**Mac or Linux:** the scripts are Windows-only, but the switch is one adb command
+On Mac or Linux the scripts don't run, but the switch is one adb command
 (`1` = keep on, `0` = stock; repeat after every restart):
 
 ```
 adb shell dumpsys activity service com.android.systemui/.keyguard.KeyguardService debug keep_aod_on 1
 ```
+
+## Build it yourself
+
+`prebuilt\AodKeepOn.apk` is built from the source in `app\` with `app\build.ps1`. To check
+your download, compare its hash with `prebuilt\SHA256.txt`:
+
+```powershell
+Get-FileHash .\prebuilt\AodKeepOn.apk -Algorithm SHA256
+```
+
+To build and install it yourself instead, you need
+[Android Studio](https://developer.android.com/studio) (open it once so it downloads the
+Android SDK), or the Android SDK and a JDK 17+. Then double-click **`build-app.cmd`**, or run
+`.\app\build.ps1 -Install`.
+
+- It uses plain SDK tools (javac, d8, aapt2, apksigner), no Gradle.
+- The first build creates your own signing key in `app\keystore\` (git-ignored). Android only
+  updates an app signed with the same key, so to switch between the prebuilt app and your
+  own build, uninstall AOD Keep-On first.
+- Maintainers: `.\app\build.ps1 -Prebuilt` rebuilds `prebuilt\` and its `SHA256.txt` with the
+  project's key.
 
 ## How it works
 
@@ -217,15 +256,11 @@ once:
 
 - ColorOS 17 blocks `adb shell pm grant` and no longer has *Disable permission monitoring*
   in Developer options, but `adb install -g` still grants it during the install. That's
-  what `install-app.cmd` (`app\build.ps1 -Install`) does.
+  what `install-app.cmd` (`app\install.ps1`) does.
 - The permission belongs to the installed app, so it survives turning Developer options off
   (tested).
 - A direct-boot-aware receiver re-applies your last choice after every restart. On the tested
   phone the switch was back on about 9 s after boot, before the first unlock.
-
-`app\build.ps1` builds with plain SDK tools (javac, d8, aapt2, apksigner), no Gradle. The
-first build creates a signing key in `app\keystore\` (git-ignored). Keep it: updates must be
-signed with the same key, or you have to uninstall the app first.
 
 ### AOD brightness
 
