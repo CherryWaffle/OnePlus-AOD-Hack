@@ -5,3 +5,6 @@ backups/
 # App build output and the local signing key (keep the key, never publish it).
 app/build/
 app/keystore/
+
+# Google's SDK Platform-Tools, if unzipped into the project (users download it themselves).
+platform-tools/
