@@ -215,9 +215,12 @@ Android SDK), or the Android SDK and a JDK 17+. Then double-click **`build-app.c
 `.\app\build.ps1 -Install`.
 
 - It uses plain SDK tools (javac, d8, aapt2, apksigner), no Gradle.
-- The first build creates your own signing key in `app\keystore\` (git-ignored). Android only
-  updates an app signed with the same key, so to switch between the prebuilt app and your
-  own build, uninstall AOD Keep-On first.
+- The first build creates your own signing key, `app\keystore\signing.jks`, with a random
+  password in `app\keystore\password.txt`. Both are git-ignored; back them up together.
+  Android only updates an app signed with the same key, so to switch between the prebuilt
+  app and your own build, uninstall AOD Keep-On first.
+- Keys made by earlier versions of the script used the password `android`. The next build
+  moves them to a random password automatically; the key itself doesn't change.
 - Maintainers: `.\app\build.ps1 -Prebuilt` rebuilds `prebuilt\` and its `SHA256.txt` with the
   project's key.
 
