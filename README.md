@@ -62,6 +62,37 @@ the timer.
 Verified on the phone: after `on`, the log shows the hide being skipped, and the display
 stays in `DOZE_SUSPEND` (AOD lit) instead of going `OFF`.
 
+## AOD brightness
+
+Full-screen AOD brightness already follows the ambient light, with or without this hack.
+Measured with `.\aod.ps1 watch` on a OnePlus 12:
+
+| Ambient light | AOD brightness |
+|---|---|
+| ~200 lux (room light) | 33 nits |
+| ~350 lux | 40 nits |
+| ~850 lux | 61 nits |
+| ~1100 lux (phone torch) | 70 nits |
+
+The range is narrow, so a torch makes the AOD brighter, but not dramatically. How SystemUI
+picks the value (`OplusPanoramicAODLightController.calculateBrightness`):
+
+- A low-power AOD light sensor reports when the light band changes. SystemUI then takes one
+  reading from the main light sensor, which sits under the top of the display.
+- The reading is put into one of 26 bands (0, 25, 100, 200 … 2000, 2500, 3000, 3500 lux),
+  looked up in a nit table (6 … 323 nits), and **divided by 1.6**.
+- The band can be capped at level 18 (about 1700 lux, ~99 nits). If AOD starts right after
+  the screen was on, the level is also capped at the screen brightness you had before locking.
+
+It can't be raised without root:
+
+- The nit table is a SystemUI resource (`config_panoramic_aod_brightness_nit`, with a
+  built-in default). Shell-made overlays can't replace array resources.
+- The same `dumpsys` handler has brightness overrides (`aod_brightness_debug`,
+  `aod_lux_debug`). They return early unless `Build.isDebuggable()` is true, which it
+  isn't on retail phones.
+- So does `smt userEnablePanoramicAllDay true`, which would set the real all-day flag.
+
 ## Caveats
 
 - **Reboot = gone.** Re-run `.\aod.ps1 on`.
