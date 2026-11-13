@@ -13,11 +13,14 @@
     .\aod.ps1 off      # restore the stock timeout
 .EXAMPLE
     .\aod.ps1 status   # show the latest AOD hide / keep-on log lines
+.EXAMPLE
+    .\aod.ps1 watch    # live view for 30 s: ambient light (lux) -> AOD brightness (nits)
 #>
 param(
-    [ValidateSet('on', 'off', 'status')]
+    [ValidateSet('on', 'off', 'status', 'watch')]
     [string]$Action = 'on',
-    [string]$Serial
+    [string]$Serial,
+    [int]$Seconds = 30
 )
 
 $ErrorActionPreference = 'Stop'
@@ -86,5 +89,26 @@ switch ($Action) {
                 Write-Host "`nNot active: the last AOD was hidden by the timeout. Run: .\aod.ps1 on"
             }
         }
+    }
+    'watch' {
+        Write-Host "Watching AOD for $Seconds s. Lock the phone, then shine a light at the top of the screen"
+        Write-Host '(the light sensor sits under the display near the front camera).'
+        # timeout runs on the phone, so the stream ends by itself.
+        & $adb -s $dev.Serial shell "timeout $Seconds logcat -T 1 -v time -s SystemUi--Aod:I" | ForEach-Object {
+            $time = if ($_ -match '^\S+\s+(\d\d:\d\d:\d\d)') { $Matches[1] } else { '' }
+            if ($_ -match 'lightValue=([\d.]+).*?Nit=\s*([\d.]+)') {
+                '{0}  light {1,6:N0} lux  ->  AOD {2,5:N1} nits' -f $time, [double]$Matches[1], [double]$Matches[2]
+            }
+            elseif ($_ -match 'keep aod on for test') {
+                "$time  timeout fired, skipped (keep_aod_on is active)"
+            }
+            elseif ($_ -match 'onEnergySavingNotifyHide') {
+                "$time  timeout fired, AOD hidden (keep_aod_on is off)"
+            }
+            elseif ($_ -match 'onDreamingStarted, aod type') {
+                "$time  AOD started"
+            }
+        }
+        Write-Host 'Done.'
     }
 }
