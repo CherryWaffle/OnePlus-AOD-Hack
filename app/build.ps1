@@ -23,25 +23,31 @@ $ErrorActionPreference = 'Stop'
 $here = $PSScriptRoot
 $package = 'aodhack.keepon'
 
+function Stop-Setup([string]$Message) {
+    Write-Host $Message -ForegroundColor Red
+    exit 1
+}
+
 # --- Tools -------------------------------------------------------------------
 $sdk = @($env:ANDROID_HOME, $env:ANDROID_SDK_ROOT, (Join-Path $env:LOCALAPPDATA 'Android\Sdk')) |
     Where-Object { $_ -and (Test-Path (Join-Path $_ 'build-tools')) } | Select-Object -First 1
-if (-not $sdk) { throw 'Android SDK not found. Set ANDROID_HOME.' }
+if (-not $sdk) { Stop-Setup 'Android SDK not found. Install Android Studio and open it once (it downloads the SDK), or set ANDROID_HOME.' }
 
 $buildTools = Get-ChildItem (Join-Path $sdk 'build-tools') -Directory |
     Where-Object { Test-Path (Join-Path $_.FullName 'd8.bat') } |
     Sort-Object { [version]($_.Name -replace '-.*$', '') } | Select-Object -Last 1 -ExpandProperty FullName
 $androidJar = Get-ChildItem (Join-Path $sdk 'platforms') -Directory |
     Where-Object { Test-Path (Join-Path $_.FullName 'android.jar') } |
-    Sort-Object { [version](($_.Name -replace '^android-', '') + '.0' -replace '^(\d+\.\d+).*', '$1') } |
+    Where-Object { $_.Name -match '^android-\d+' } |
+    Sort-Object { [int]($_.Name -replace '^android-(\d+).*$', '$1') } |
     Select-Object -Last 1 | ForEach-Object { Join-Path $_.FullName 'android.jar' }
-if (-not $buildTools -or -not $androidJar) { throw 'Need Android build-tools and a platform (android.jar) in the SDK.' }
+if (-not $buildTools -or -not $androidJar) { Stop-Setup 'Need Android build-tools and a platform (android.jar) in the SDK. Open Android Studio once, or install them with its SDK Manager.' }
 
 $jdk = @($env:JAVA_HOME, "$env:ProgramFiles\Android\Android Studio\jbr") |
     Where-Object { $_ -and (Test-Path (Join-Path $_ 'bin\javac.exe')) } | Select-Object -First 1
 if (-not $jdk) {
     $javacCmd = Get-Command javac -ErrorAction SilentlyContinue
-    if (-not $javacCmd) { throw 'JDK 17+ not found. Set JAVA_HOME.' }
+    if (-not $javacCmd) { Stop-Setup 'JDK 17+ not found. Install Android Studio (it includes one) or set JAVA_HOME.' }
     $jdk = Split-Path (Split-Path $javacCmd.Source)
 }
 # d8.bat and apksigner.bat use JAVA_HOME / PATH.
