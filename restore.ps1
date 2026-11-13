@@ -5,7 +5,9 @@
 .DESCRIPTION
     1. Turns SystemUI's keep_aod_on flag off. This is the only thing aod.ps1 changes,
        and it lives in memory (a reboot clears it too).
-    2. Compares AOD-related settings (keys containing aod / doze / ambient / panoramic)
+    2. Uninstalls the AOD Keep-On app if it is installed, since it would turn the flag
+       back on at the next boot.
+    3. Compares AOD-related settings (keys containing aod / doze / ambient / panoramic)
        with the oldest snapshot from backup.ps1 and lists every difference.
        aod.ps1 never writes settings, so differences normally come from changes you
        made yourself in the Settings app (for example picking a different AOD style).
@@ -51,7 +53,16 @@ if ($PSCmdlet.ShouldProcess('SystemUI', 'set keep_aod_on 0')) {
     Write-Host 'keep_aod_on = 0: stock AOD timeout restored.'
 }
 
-# 2. Settings, compared with the snapshot.
+# 2. The on-phone app, which would set the flag again at the next boot.
+$appPackage = 'aodhack.keepon'
+if (@(Invoke-PhoneShell "pm list packages $appPackage") -contains "package:$appPackage") {
+    if ($PSCmdlet.ShouldProcess($appPackage, 'uninstall the AOD Keep-On app')) {
+        Invoke-PhoneAdb uninstall $appPackage | Out-Null
+        Write-Host 'Uninstalled the AOD Keep-On app.'
+    }
+}
+
+# 3. Settings, compared with the snapshot.
 if (-not $Snapshot) {
     $Snapshot = Get-ChildItem $BackupRoot -Directory -Filter "$($script:PhoneModel)_*" -ErrorAction SilentlyContinue |
         Sort-Object Name | Select-Object -First 1 -ExpandProperty FullName
