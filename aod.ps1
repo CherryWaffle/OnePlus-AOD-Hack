@@ -29,6 +29,8 @@ Connect-AodPhone $Serial
 
 switch ($Action) {
     'on' {
+        # First run on this phone: keep a "before" snapshot for restore.ps1.
+        Save-SettingsSnapshot -IfMissing
         Invoke-PhoneShell "dumpsys activity service $KeyguardService debug keep_aod_on 1" | Out-Null
         Write-Host 'keep_aod_on = 1. Full-screen AOD will no longer time out (until the next reboot).'
         Write-Host 'Check: lock the phone, wait ~15 s, then run: .\aod.ps1 status'
