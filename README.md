@@ -65,9 +65,9 @@ options), but `adb install -g` still grants it during the install, and the build
 does that. The build creates a signing key in `app\keystore\` (git-ignored). Keep it:
 updates must be signed with the same key, or you have to uninstall first.
 
-Not yet tested: whether the permission survives turning Developer options off. It should,
-since it belongs to the installed app rather than to ADB. Open the app after that restart
-to check that it says ON.
+Tested with Developer options turned off: after a restart, full-screen AOD stayed on at the
+lock screen for minutes before the first unlock. The permission belongs to the installed app
+rather than to ADB, so it survives Developer options being off.
 
 ## Undo everything
 
