@@ -2,7 +2,7 @@ package aodhack.keepon;
 
 import android.Manifest;
 import android.content.Context;
-import android.content.SharedPreferences;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.util.Log;
 
@@ -34,6 +34,16 @@ final class KeepAod {
     static int set(boolean on) {
         dumpsys("debug", "keep_aod_on", on ? "1" : "0");
         return parse(dumpsys("aod_display"));
+    }
+
+    /**
+     * Makes SystemUI run its AOD hide check now, the same broadcast its own timer sends.
+     * SystemUI only checks once, a few seconds after the AOD appears, so without this a
+     * full-screen AOD that is already lit stays lit after the switch is turned off.
+     */
+    static void requestHideCheck(Context context) {
+        context.sendBroadcast(new Intent("com.android.systemui.aod.HIDE_TIME")
+                .setPackage("com.android.systemui"));
     }
 
     /** Reads "keepAodOn: N" from SystemUI's aod_display dump. */
@@ -73,20 +83,5 @@ final class KeepAod {
             }
             return out.toString(StandardCharsets.UTF_8.name());
         }
-    }
-
-    // The user's last choice. Kept in device-protected storage so the boot receiver
-    // can read it before the phone is unlocked.
-    private static SharedPreferences prefs(Context context) {
-        return context.createDeviceProtectedStorageContext()
-                .getSharedPreferences("state", Context.MODE_PRIVATE);
-    }
-
-    static boolean wanted(Context context) {
-        return prefs(context).getBoolean("keep_on", true);
-    }
-
-    static void setWanted(Context context, boolean on) {
-        prefs(context).edit().putBoolean("keep_on", on).apply();
     }
 }
