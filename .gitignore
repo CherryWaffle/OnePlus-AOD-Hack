@@ -1,0 +1,3 @@
+# Settings snapshots from backup.ps1. They hold the phone's own settings
+# (device name, Wi-Fi/Bluetooth related values, ...), so never commit them.
+backups/
