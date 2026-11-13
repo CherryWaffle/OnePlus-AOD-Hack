@@ -1,36 +1,170 @@
-# OnePlus 12 all-day full-screen AOD (no root)
+# Keep full-screen AOD on: OPPO, OnePlus, Realme (no root)
 
-OnePlus ships full-screen ("panoramic") Always-On Display on the OnePlus 12, but SystemUI
-hides it after a few seconds. The OnePlus 13 gets the all-day version. This repo turns the
-cutoff off with one ADB command. No root, no bootloader unlock.
+On many phones running ColorOS or a system built on it (OxygenOS, Realme UI), the
+**full-screen Always-On Display** (the one that shows your wallpaper) turns itself off after
+about 5 seconds, and Settings has no option to keep it on. Some models, like the OnePlus 13,
+get an "all day" option; others don't.
 
-Two ways to use it:
+This project keeps it on using a hidden switch that is already in the phone's SystemUI.
+**No root, no unlocked bootloader, no system files changed, and fully reversible.**
 
-- **Phone app (recommended).** Install once over USB. After that the app turns it on from
-  the phone and turns it back on by itself after every restart. See [Phone app](#phone-app).
-- **PC scripts.** Run `.\aod.ps1 on` over USB after every restart.
+- [Is this for my phone?](#is-this-for-my-phone)
+- [Set it up](#set-it-up) (about 10 minutes, once)
+- [Troubleshooting](#troubleshooting)
+- [Undo everything](#undo-everything)
+- [Things to know](#things-to-know)
+- [Without the app (PC scripts)](#without-the-app-pc-scripts)
+- [How it works](#how-it-works)
 
-Tested on: OnePlus 12 `CPH2573`, build `CPH2573_17.0.0.100(EX01)` (ColorOS 17, Android 17).
+## Is this for my phone?
 
-## Use
+It is if all of these are true:
 
-1. Phone: Settings → Wallpapers & style → Always-On Display → pick the **full-screen** style.
-2. Plug the phone in over USB with USB debugging on (Developer options).
-3. Run (or double-click `aod.cmd`):
+- It's an **OPPO, OnePlus or Realme** phone on **ColorOS, OxygenOS or Realme UI**,
+  Android 11 or newer.
+- Its Always-On Display settings offer a **full-screen** style, and that style **turns off
+  after a few seconds** with no "all day" option.
 
-   ```powershell
-   .\aod.ps1 on
-   ```
+Tested:
 
-4. **After every reboot, run it again.** The flag lives in SystemUI's memory and resets
-   whenever SystemUI restarts. Unplugging the cable does not reset it.
+| Phone | Software | Result |
+|---|---|---|
+| OnePlus 12 (CPH2573) | ColorOS 17 (17.0.0.100) | Works, app and scripts |
+| OnePlus 13R | OxygenOS 16 | Works, same switch ([Astroisback/oneplus-13r-aod](https://github.com/Astroisback/oneplus-13r-aod)) |
+
+Other OPPO/OnePlus/Realme models probably work if their SystemUI has the same switch. The
+app tells you after one tap (see [Troubleshooting](#troubleshooting)). Samsung, Pixel,
+Xiaomi and other brands don't have this switch, so it can't work there.
+
+## Set it up
+
+### What you need
+
+- A **Windows PC** and a USB **data** cable.
+- **[Android Studio](https://developer.android.com/studio)** (free). Install it and open it
+  once: its setup wizard downloads the Android SDK. That gives the installer everything it
+  needs (adb, the SDK, and Java). If you already have the Android SDK and a JDK 17+, that
+  works too (set `ANDROID_HOME` / `JAVA_HOME` if they're in unusual places).
+
+### 1. Pick the full-screen AOD on the phone
+
+Settings → **Wallpapers & style** → **Always-On Display** (or search Settings for
+"Always-On Display"). Turn it on and choose a **full-screen** style.
+
+Lock the phone. If the AOD disappears after about 5 seconds, you're in the right place.
+
+### 2. Turn on USB debugging
+
+1. Settings → **About device** → **Version** → tap **Build number** 7 times and enter your
+   PIN (or search Settings for "Build number"). This unlocks Developer options.
+2. Open **Developer options** (search Settings for it) and turn on **USB debugging**.
+3. Plug the phone into the PC. On the phone, tap **Allow** on "Allow USB debugging?" and tick
+   **Always allow from this computer**.
+
+### 3. Download this project
+
+On GitHub: **Code → Download ZIP**, then extract it. (Or `git clone` it.)
+
+### 4. Install the app
+
+In the extracted folder, double-click **`install-app.cmd`** (if Windows asks whether to run a
+downloaded file, choose **Run**). It builds the app, installs it on the phone and gives it the
+one permission it needs. It should end with:
+
+```
+Installed with the DUMP permission. Open "AOD Keep-On" on the phone.
+```
+
+### 5. Turn it on
+
+On the phone, open **AOD Keep-On** and tap **Turn on**. It should say **ON**.
+
+Lock the phone: the full-screen AOD now stays on.
+
+### 6. Turn off USB debugging (optional)
+
+The app doesn't need it any more. You can turn off USB debugging or Developer options. If
+your phone restarts when you turn Developer options off (OxygenOS 16 does), the app turns
+the AOD back on after the restart by itself.
+
+That's it. **After every restart, the app turns it back on automatically**, even before
+you unlock the phone. To turn it off, open the app and tap **Turn off**; it stays off after
+restarts until you tap **Turn on** again.
+
+## Troubleshooting
+
+| What you see | What to do |
+|---|---|
+| Windows says "running scripts is disabled" | Use the `.cmd` files (double-click). They run the scripts with a one-time bypass. |
+| "No phone found" | Use a data cable (not charge-only), check USB debugging is on, try another USB port. |
+| "Phone is unauthorized" | Unlock the phone and tap **Allow** on the USB debugging prompt. |
+| The phone keeps asking to allow USB debugging, or you see "adb server version doesn't match" | Another program on the PC runs its own copy of adb (for example SuperDisplay or a phone-mirroring tool). Close it and try again. |
+| "Android SDK not found" or "JDK 17+ not found" | Install Android Studio and open it once, or set `ANDROID_HOME` / `JAVA_HOME`. |
+| "Installed, but the DUMP permission was not granted" | Your software blocks it. If Developer options has **Disable permission monitoring**, turn it on and run `install-app.cmd` again. |
+| The app shows "One-time setup needed" | It was installed without its permission (for example by opening the APK on the phone). Run `install-app.cmd` from the PC. |
+| The app says **Unknown** | Your phone's SystemUI doesn't have the switch, so this can't work on it (or a system update removed it). |
+| The app says **OFF** right after Turn on | SystemUI ignored the switch: this phone or software version isn't supported. |
+| The app says **ON** but the AOD still turns off | Check you picked a **full-screen** AOD style. AOD also turns off on purpose when the phone is in a pocket or covered. |
+| AOD stops staying on after a restart | Open the app. If it says OFF, tap **Turn on**. If that happens after every restart, allow the app to auto-launch: Settings → Apps → AOD Keep-On → battery / auto launch. |
+
+## Undo everything
+
+The simplest way: **uninstall AOD Keep-On and restart the phone.** Nothing else was changed.
+
+Or, with the phone on USB debugging, double-click **`restore.cmd`**. It:
+
+1. Turns the switch off.
+2. Uninstalls the app (otherwise it would turn the switch back on at the next restart).
+3. Compares AOD-related settings (keys containing `aod`, `doze`, `ambient`, `panoramic`) with
+   a "before" snapshot and lists any differences.
+
+The snapshot is saved by the first `aod.cmd` / `.\aod.ps1 on` (or by hand with
+`.\backup.ps1`) into `backups\`, which is git-ignored because it holds your phone's own
+settings. Differences usually come from changes you made yourself, like switching AOD style,
+so they are only listed. To write the snapshot values back anyway:
+
+```powershell
+.\restore.ps1 -ApplySettings -WhatIf   # preview
+.\restore.ps1 -ApplySettings
+```
+
+Developer options and USB debugging are never touched. To remove a PC's access: Developer
+options → **Revoke USB debugging authorisations**.
+
+## Things to know
+
+- **Battery and burn-in.** The AOD stays lit whenever the phone is face-up and uncovered.
+  Pocket detection and the AOD's burn-in protection are separate code that the switch
+  doesn't touch, but this is more screen-on time than the maker allows on these phones.
+- **It isn't the maker's real "all day" mode.** It skips the hide instead of switching that
+  mode on. The real flag is locked to debug builds (see [How it works](#how-it-works)).
+- **A system update can break it.** It's a hidden debug switch, and the maker already blocks
+  similar ones on retail phones. After an update, open the app: ON means it still works.
+- **Brightness tops out around 70-100 nits** in bright light. That's the phone's own AOD
+  brightness curve, and it can't be raised without root (see
+  [AOD brightness](#aod-brightness)).
+- **The clock-only AOD style is unaffected**, apart from two small side effects while the
+  switch is on: SystemUI's face-down check for AOD turns on, and a *Scheduled* AOD may keep
+  its clock updating outside your hours (not tested).
+- **A SystemUI crash clears the switch** without a restart, and the app doesn't notice.
+  Open the app and tap **Turn on**.
+- **ADB approval expires** if the PC doesn't connect for 7 days, so the phone may ask again
+  the next time you plug in.
+- The PC scripts are **Windows only** (PowerShell).
+
+## Without the app (PC scripts)
+
+If you'd rather not install an app, the PC can flip the switch directly. You then have to do
+it **after every restart**, with USB debugging on:
+
+- Double-click **`aod.cmd`**, or run `.\aod.ps1 on` in PowerShell.
 
 Other commands:
 
 ```powershell
-.\aod.ps1 status   # is it active right now? (reads SystemUI's live keepAodOn value)
-.\aod.ps1 watch    # live for 30 s (-Seconds N): light reading -> AOD nits, timeout events
-.\aod.ps1 off      # restore the stock timeout (rebooting also does this)
+.\aod.ps1 status   # is it on right now? (reads SystemUI's live value)
+.\aod.ps1 watch    # 30 s live view (-Seconds N): light level -> AOD brightness, timeouts
+.\aod.ps1 off      # back to the stock timeout (a restart also does this)
 ```
 
 `watch` shows what the AOD does while the phone is locked:
@@ -41,90 +175,62 @@ Other commands:
 23:08:29  timeout fired, skipped (keep_aod_on is active)
 ```
 
-## Phone app
-
-`app\` is a small app, **AOD Keep-On** (about 200 lines of Java, no libraries). It runs the
-same `dumpsys` command itself, so no PC is needed after the one-time install.
-
-Install it once (phone on USB debugging; needs the Android SDK and a JDK 17+, no Gradle):
-
-```powershell
-.\app\build.ps1 -Install
-```
-
-Then on the phone:
-
-- Open **AOD Keep-On** and tap **Turn on** or **Turn off**. It shows SystemUI's live value.
-- After every restart it re-applies your last choice by itself, before the first unlock.
-  On the tested phone the flag was back to 1 about 9 s after boot, and the AOD held on the
-  still-locked phone.
-
-Why it works: running `dumpsys` needs `android.permission.DUMP`. ColorOS 17 blocks
-`adb shell pm grant` (and no longer has *Disable permission monitoring* in Developer
-options), but `adb install -g` still grants it during the install, and the build script
-does that. The build creates a signing key in `app\keystore\` (git-ignored). Keep it:
-updates must be signed with the same key, or you have to uninstall first.
-
-Tested with Developer options turned off: after a restart, full-screen AOD stayed on at the
-lock screen for minutes before the first unlock. The permission belongs to the installed app
-rather than to ADB, so it survives Developer options being off.
-
-## Undo everything
-
-```powershell
-.\restore.ps1      # or double-click restore.cmd
-```
-
-The scripts change two things on the phone: SystemUI's in-memory `keep_aod_on` flag, and,
-if you installed it, the AOD Keep-On app. `restore.ps1` turns the flag off (a reboot does the
-same) and uninstalls the app (otherwise it would turn the flag back on at the next boot).
-It then compares AOD-related settings (keys containing `aod`, `doze`, `ambient`,
-`panoramic`) with the "before" snapshot and lists any differences.
-
-- The first `.\aod.ps1 on` saves that snapshot automatically. `.\backup.ps1` takes one
-  by hand. Snapshots go in `backups\`, which is git-ignored because they hold your
-  phone's own settings.
-- Differences usually come from changes you made in Settings, such as switching AOD
-  style, so they are only listed by default. To write the snapshot values back anyway:
-
-  ```powershell
-  .\restore.ps1 -ApplySettings -WhatIf   # preview
-  .\restore.ps1 -ApplySettings
-  ```
-
-- Developer options and USB debugging are never touched. To remove a PC's access, use
-  Developer options → Revoke USB debugging authorizations.
-
-## How it works
-
-The command is:
+**Mac or Linux:** the scripts are Windows-only, but the switch is one adb command
+(`1` = keep on, `0` = stock; repeat after every restart):
 
 ```
 adb shell dumpsys activity service com.android.systemui/.keyguard.KeyguardService debug keep_aod_on 1
 ```
 
-In this build's SystemUI (checked in the APK pulled from the phone):
+## How it works
 
-- SystemUI asks the display panel whether all-day is allowed
-  (`isSupportPanoramicAllDayByPanelFeature`). On the OnePlus 12 the answer is no, so a few
-  seconds after full-screen AOD appears a hide timer fires (`hideByTimeoutReceiver`).
-- Before hiding, `PanoramicAodController.onEnergySavingNotifyHide()` checks a debug field,
-  `mKeepAodOn`. If it is set, the hide is skipped and the log says
+The switch is a debug field in SystemUI, reachable through `dumpsys`:
+
+```
+adb shell dumpsys activity service com.android.systemui/.keyguard.KeyguardService debug keep_aod_on 1
+```
+
+Checked in the SystemUI APK pulled from a OnePlus 12 on ColorOS 17:
+
+- SystemUI asks the display panel whether all-day full-screen AOD is allowed
+  (`isSupportPanoramicAllDayByPanelFeature`). When the answer is no, a hide timer fires a few
+  seconds after the full-screen AOD appears (`hideByTimeoutReceiver`).
+- Before hiding, `BaseAodClockLayoutController.onEnergySavingNotifyHide()` checks a debug
+  field, `mKeepAodOn`. If it is 1, the hide is skipped and the log says
   `onEnergySavingNotifyHide: keep aod on for test!`
-- `OplusKeyguardServiceExImpl.dumpPhaseThree(debug keep_aod_on 1)` sets that field, and
-  the ADB shell can reach it through `dumpsys`.
+- `OplusKeyguardServiceExImpl.dumpPhaseThree(debug keep_aod_on 1)` sets that field. Unlike
+  its neighbours, it has no `Build.isDebuggable()` check, so a retail phone accepts it.
+- The field only exists in memory and SystemUI sets it to 0 at every start, which is why it
+  has to be set again after a restart. SystemUI prints it in its `aod_display` dump
+  (`keepAodOn: 1`), which is how the app and `.\aod.ps1 status` read it.
 
-Setting `oplus_keyguard_panoramic_aod_all_day_support` by hand does not help. SystemUI
-writes that value from the panel check for the Settings app to read; it doesn't control
-the timer.
+Setting `oplus_keyguard_panoramic_aod_all_day_support` by hand does not help: SystemUI writes
+that value from the panel check for the Settings app to read, and it doesn't control the timer.
+The real all-day flag can be set with `smt userEnablePanoramicAllDay true`, but only on debug
+builds (`Build.isDebuggable()`).
 
-Verified on the phone: after `on`, the log shows the hide being skipped, and the display
-stays in `DOZE_SUSPEND` (AOD lit) instead of going `OFF`.
+### The app
 
-## AOD brightness
+`app\` is **AOD Keep-On**, a few hundred lines of Java with no libraries. It runs the same
+`dumpsys` command itself, which needs `android.permission.DUMP`. Only ADB can grant that,
+once:
 
-Full-screen AOD brightness already follows the ambient light, with or without this hack.
-Measured with `.\aod.ps1 watch` on a OnePlus 12:
+- ColorOS 17 blocks `adb shell pm grant` and no longer has *Disable permission monitoring*
+  in Developer options, but `adb install -g` still grants it during the install. That's
+  what `install-app.cmd` (`app\build.ps1 -Install`) does.
+- The permission belongs to the installed app, so it survives turning Developer options off
+  (tested).
+- A direct-boot-aware receiver re-applies your last choice after every restart. On the tested
+  phone the switch was back on about 9 s after boot, before the first unlock.
+
+`app\build.ps1` builds with plain SDK tools (javac, d8, aapt2, apksigner), no Gradle. The
+first build creates a signing key in `app\keystore\` (git-ignored). Keep it: updates must be
+signed with the same key, or you have to uninstall the app first.
+
+### AOD brightness
+
+Full-screen AOD brightness follows the ambient light with or without this project. Measured
+with `.\aod.ps1 watch` on a OnePlus 12:
 
 | Ambient light | AOD brightness |
 |---|---|
@@ -133,8 +239,7 @@ Measured with `.\aod.ps1 watch` on a OnePlus 12:
 | ~850 lux | 61 nits |
 | ~1100 lux (phone torch) | 70 nits |
 
-The range is narrow, so a torch makes the AOD brighter, but not dramatically. How SystemUI
-picks the value (`OplusPanoramicAODLightController.calculateBrightness`):
+How SystemUI picks the value (`OplusPanoramicAODLightController.calculateBrightness`):
 
 - A low-power AOD light sensor reports when the light band changes. SystemUI then takes one
   reading from the main light sensor, which sits under the top of the display.
@@ -143,64 +248,10 @@ picks the value (`OplusPanoramicAODLightController.calculateBrightness`):
 - The band can be capped at level 18 (about 1700 lux, ~99 nits). If AOD starts right after
   the screen was on, the level is also capped at the screen brightness you had before locking.
 
-It can't be raised without root:
-
-- The nit table is a SystemUI resource (`config_panoramic_aod_brightness_nit`, with a
-  built-in default). Shell-made overlays can't replace array resources.
-- The same `dumpsys` handler has brightness overrides (`aod_brightness_debug`,
-  `aod_lux_debug`). They return early unless `Build.isDebuggable()` is true, which it
-  isn't on retail phones.
-- `smt userEnablePanoramicAllDay true`, which would set the real all-day flag (the one
-  the OnePlus 13 has), has the same `Build.isDebuggable()` check.
-
-## Limitations and FAQ
-
-**Does it survive a restart?** The flag doesn't. `keep_aod_on` is a field in SystemUI's
-memory: `setKeepAodOn` only stores it there, and SystemUI sets it to 0 every time it starts.
-The [phone app](#phone-app) sets it again after every restart. With the scripts only, run
-`.\aod.ps1 on` again. A SystemUI crash also clears it, and the app doesn't notice that (open
-it and tap Turn on). `.\aod.ps1 status` or the app shows whether it is active.
-
-**Do I need to keep Developer options on?** With the phone app, only for the one-time
-install. ColorOS 17 turns Developer options off without a restart. The flag lives in
-SystemUI rather than in ADB, so it should stay set (not tested; the test phone was
-restarted anyway). OxygenOS 16 restarts the phone when you turn them off, which clears the
-flag, and the app sets it again after that restart. With the scripts only, you need USB
-debugging to re-apply after every restart.
-
-**Does it change the clock-only (partial) AOD?** Not its timeout. The hide that `keep_aod_on`
-skips only runs when the AOD's energy-saving mode is on, and the clock-only style normally has
-it off (the log says `energySaving mode is closed`). Two other places in SystemUI read the flag,
-and they apply to every AOD style while it is set:
-
-- Face-down check: it turns on SystemUI's upside-down check for AOD
-  (`isNeedUpsideDown : true for aod on`), which full-screen AOD otherwise has off.
-- Clock refresh: `isDisplayModeAllowUpdateClock` returns true straight away, skipping its
-  *Scheduled* (time window) check. If you use a schedule, AOD may keep updating outside your
-  hours. Not tested; run `.\aod.ps1 off` if you see that.
-
-Other limitations:
-
-- **Scripts need ADB after every reboot.** The phone app doesn't (see [Phone app](#phone-app)).
-- **An update can break it.** This is a debug hook. OnePlus already blocks its neighbours
-  (`aod_brightness_debug`, `smt userEnablePanoramicAllDay`) on retail builds, and could do the
-  same to `keep_aod_on`. After an update, check with `.\aod.ps1 status`.
-- **Not OnePlus's real all-day mode.** It skips the hide instead of switching on the all-day
-  logic, so AOD stays lit whenever the phone is face-up and uncovered. Pocket/proximity
-  detection and burn-in protection still run. It still means more battery use and more
-  burn-in risk than OnePlus allows on this panel.
-- **Brightness tops out around 70-100 nits** in bright light (see above).
-- **Windows only, one phone tested.** The scripts are PowerShell. Tested on a OnePlus 12
-  `CPH2573` with build `17.0.0.100`.
-- **ADB approval can expire.** Android forgets a PC after 7 days without a connection, so the
-  phone may ask you to Allow USB debugging again.
-- **SuperDisplay conflict.** SuperDisplay bundles its own older adb
-  (`C:\Program Files\SuperDisplay\adb\adb.exe`, v40). When it and the SDK adb (v41) both
-  run, they kill each other's server, and the phone may ask for USB-debugging approval again.
-  Close SuperDisplay before running the script.
-- **Banking apps** sometimes refuse to run while Developer options / USB debugging are on.
-  With the phone app installed you can turn them off. If your OS restarts the phone to do
-  that, the app re-applies the flag.
+It can't be raised without root: the nit table is a SystemUI resource
+(`config_panoramic_aod_brightness_nit`) that shell-made overlays can't replace, and the
+debug overrides in the same handler (`aod_brightness_debug`, `aod_lux_debug`) only work on
+debug builds.
 
 ## Credit
 
