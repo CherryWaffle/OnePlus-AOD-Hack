@@ -78,7 +78,8 @@ switch ($Action) {
         $pattern = 'keep aod on for test|onEnergySavingNotifyHide|hideByTimeoutReceiver|PanoramicAodController-->onDreamingStarted'
         $hits = @(& $adb -s $dev.Serial logcat -d -v time | Select-String -Pattern $pattern | Select-Object -Last 12)
         if ($hits.Count -eq 0) {
-            Write-Host 'No AOD events in the log yet. Lock the phone with full-screen AOD selected, wait ~15 s, retry.'
+            Write-Host 'No AOD events in the log. The phone log buffer is small and rolls over within a minute:'
+            Write-Host 'lock the phone with full-screen AOD selected, wait ~15 s, run status again (or use: .\aod.ps1 watch).'
         }
         else {
             $hits | ForEach-Object { $_.Line }
