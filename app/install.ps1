@@ -42,7 +42,7 @@ if (-not (& $isGranted)) {
         @(Invoke-PhoneShell "pm grant $package android.permission.PACKAGE_USAGE_STATS")
 }
 if (& $isGranted) {
-    Write-Host 'Installed with the DUMP permission. Open "AOD Keep-On" on the phone and tap Turn on.' -ForegroundColor Green
+    Write-Host 'Installed with the DUMP permission. Open "AOD Keep-On" on the phone and choose Always or On a schedule.' -ForegroundColor Green
 }
 else {
     $replies | Where-Object { $_ -match 'SecurityException' } | Select-Object -First 1 |
