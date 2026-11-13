@@ -12,16 +12,18 @@
 .EXAMPLE
     .\app\build.ps1            # build only
 .EXAMPLE
-    .\app\build.ps1 -Install   # build, install over USB and grant the one-time permissions
+    .\app\build.ps1 -Install   # build, then install over USB with app\install.ps1
+.EXAMPLE
+    .\app\build.ps1 -Prebuilt  # build, then copy to prebuilt\ with its SHA-256 (maintainers)
 #>
 param(
     [switch]$Install,
+    [switch]$Prebuilt,
     [string]$Serial
 )
 
 $ErrorActionPreference = 'Stop'
 $here = $PSScriptRoot
-$package = 'aodhack.keepon'
 
 function Stop-Setup([string]$Message) {
     Write-Host $Message -ForegroundColor Red
@@ -107,27 +109,17 @@ Invoke-Tool 'apksigner' {
 }
 Write-Host "Built: $apk"
 
-# --- Install -----------------------------------------------------------------
+# --- Publish / install -------------------------------------------------------
+if ($Prebuilt) {
+    $dest = Join-Path (Split-Path $here -Parent) 'prebuilt'
+    New-Item -ItemType Directory -Force $dest | Out-Null
+    Copy-Item $apk (Join-Path $dest 'AodKeepOn.apk') -Force
+    $hash = (Get-FileHash (Join-Path $dest 'AodKeepOn.apk') -Algorithm SHA256).Hash.ToLower()
+    [System.IO.File]::WriteAllText((Join-Path $dest 'SHA256.txt'), "$hash  AodKeepOn.apk`n")
+    Write-Host "Updated prebuilt\AodKeepOn.apk (SHA-256 $hash)"
+}
+
 if ($Install) {
-    . (Join-Path (Split-Path $here -Parent) 'lib\AdbCommon.ps1')
-    Connect-AodPhone $Serial
-    # -g grants the requested permissions (DUMP, PACKAGE_USAGE_STATS) as part of the
-    # install. ColorOS 17 blocks a later `pm grant` from ADB, but not this.
-    Invoke-Tool 'adb install' { Invoke-PhoneAdb install -r -g $apk }
-    $isGranted = { @(Invoke-PhoneShell "dumpsys package $package") -match 'android\.permission\.DUMP: granted=true' }
-    $replies = @()
-    if (-not (& $isGranted)) {
-        $replies = @(Invoke-PhoneShell "pm grant $package android.permission.DUMP") +
-            @(Invoke-PhoneShell "pm grant $package android.permission.PACKAGE_USAGE_STATS")
-    }
-    if (& $isGranted) {
-        Write-Host 'Installed with the DUMP permission. Open "AOD Keep-On" on the phone.'
-    }
-    else {
-        $replies | Where-Object { $_ -match 'SecurityException' } | Select-Object -First 1 |
-            ForEach-Object { Write-Host "Phone refused: $($_ -replace '^.*SecurityException:\s*', '')" }
-        Write-Host 'Installed, but the DUMP permission was not granted, so the app cannot set the flag.'
-        Write-Host 'On older OnePlus/ColorOS builds, turn on "Disable permission monitoring" in'
-        Write-Host 'Developer options and run this again.'
-    }
+    & (Join-Path $here 'install.ps1') -Apk $apk -Serial $Serial
+    exit $LASTEXITCODE
 }
