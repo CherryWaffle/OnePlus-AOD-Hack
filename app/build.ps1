@@ -6,8 +6,9 @@
     Needs the Android SDK (build-tools and a platform with android.jar) and a JDK 17+.
     Output: app\build\AodKeepOn.apk.
 
-    The APK is signed with a local key in app\keystore\ (created on the first build,
-    git-ignored). Keep it: Android only installs updates signed with the same key.
+    The APK is signed with a local key in app\keystore\signing.jks, protected by a random
+    password in app\keystore\password.txt. Both are created on the first build and are
+    git-ignored. Back them up: Android only installs updates signed with the same key.
 
 .EXAMPLE
     .\app\build.ps1            # build only
@@ -95,17 +96,66 @@ finally {
 $aligned = Join-Path $out 'aligned.apk'
 Invoke-Tool 'zipalign' { & (Join-Path $buildTools 'zipalign.exe') -p -f 4 $base $aligned }
 
+# --- Signing key -------------------------------------------------------------
+# signing.jks and its random password.txt stay in app\keystore\ (git-ignored). Passwords
+# reach keytool and apksigner through environment variables, never the command line.
 $keystore = Join-Path $here 'keystore\signing.jks'
-if (-not (Test-Path $keystore)) {
-    New-Item -ItemType Directory -Force (Split-Path $keystore) | Out-Null
-    Invoke-Tool 'keytool' {
-        & (Join-Path $jdk 'bin\keytool.exe') -genkeypair -keystore $keystore -storepass android -keypass android `
-            -alias aodkeepon -keyalg RSA -keysize 2048 -validity 10000 -dname 'CN=AOD Keep-On'
+$passwordFile = Join-Path $here 'keystore\password.txt'
+$keytool = Join-Path $jdk 'bin\keytool.exe'
+
+if (-not (Test-Path $passwordFile)) {
+    if (-not (Test-Path $keystore)) {
+        New-Item -ItemType Directory -Force (Split-Path $keystore) | Out-Null
+    }
+    $bytes = New-Object byte[] 24
+    [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+    $env:AOD_KS_NEW = -join ($bytes | ForEach-Object { $_.ToString('x2') })
+    # Save the new password before touching the key, so a failure can't lose it.
+    $pending = "$passwordFile.new"
+    [System.IO.File]::WriteAllText($pending, $env:AOD_KS_NEW)
+    try {
+        if (Test-Path $keystore) {
+            # Keys from earlier versions of this script used the password "android".
+            # Give them the random one; the key and its certificate stay the same.
+            $env:AOD_KS_OLD = 'android'
+            Invoke-Tool 'keytool -storepasswd' {
+                & $keytool -storepasswd -keystore $keystore -storepass:env AOD_KS_OLD -new:env AOD_KS_NEW
+            }
+            Write-Host 'Signing key moved from the old default password to a random one in app\keystore\password.txt.'
+        }
+        else {
+            Invoke-Tool 'keytool -genkeypair' {
+                & $keytool -genkeypair -keystore $keystore -storetype PKCS12 -storepass:env AOD_KS_NEW `
+                    -keypass:env AOD_KS_NEW -alias aodkeepon -keyalg RSA -keysize 2048 -validity 10000 `
+                    -dname 'CN=AOD Keep-On'
+            }
+        }
+    }
+    catch {
+        # keytool failed, so the key still has its old password: drop the unused new one.
+        Remove-Item $pending -ErrorAction SilentlyContinue
+        throw
+    }
+    finally {
+        Remove-Item Env:AOD_KS_OLD, Env:AOD_KS_NEW -ErrorAction SilentlyContinue
+    }
+    # Only now that the key uses it does the new password become password.txt.
+    Move-Item $pending $passwordFile
+}
+elseif (-not (Test-Path $keystore)) {
+    Stop-Setup 'app\keystore\password.txt exists but signing.jks is missing. Restore the key from your backup.'
+}
+
+$apk = Join-Path $out 'AodKeepOn.apk'
+$env:AOD_KS_PASS = [System.IO.File]::ReadAllText($passwordFile).Trim()
+try {
+    Invoke-Tool 'apksigner' {
+        & (Join-Path $buildTools 'apksigner.bat') sign --ks $keystore --ks-pass env:AOD_KS_PASS `
+            --key-pass env:AOD_KS_PASS --out $apk $aligned
     }
 }
-$apk = Join-Path $out 'AodKeepOn.apk'
-Invoke-Tool 'apksigner' {
-    & (Join-Path $buildTools 'apksigner.bat') sign --ks $keystore --ks-pass pass:android --key-pass pass:android --out $apk $aligned
+finally {
+    Remove-Item Env:AOD_KS_PASS -ErrorAction SilentlyContinue
 }
 Write-Host "Built: $apk"
 
