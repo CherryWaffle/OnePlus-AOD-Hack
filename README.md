@@ -4,6 +4,12 @@ OnePlus ships full-screen ("panoramic") Always-On Display on the OnePlus 12, but
 hides it after a few seconds. The OnePlus 13 gets the all-day version. This repo turns the
 cutoff off with one ADB command. No root, no bootloader unlock.
 
+Two ways to use it:
+
+- **Phone app (recommended).** Install once over USB. After that the app turns it on from
+  the phone and turns it back on by itself after every restart. See [Phone app](#phone-app).
+- **PC scripts.** Run `.\aod.ps1 on` over USB after every restart.
+
 Tested on: OnePlus 12 `CPH2573`, build `CPH2573_17.0.0.100(EX01)` (ColorOS 17, Android 17).
 
 ## Use
@@ -35,16 +41,45 @@ Other commands:
 23:08:29  timeout fired, skipped (keep_aod_on is active)
 ```
 
+## Phone app
+
+`app\` is a small app, **AOD Keep-On** (about 200 lines of Java, no libraries). It runs the
+same `dumpsys` command itself, so no PC is needed after the one-time install.
+
+Install it once (phone on USB debugging; needs the Android SDK and a JDK 17+, no Gradle):
+
+```powershell
+.\app\build.ps1 -Install
+```
+
+Then on the phone:
+
+- Open **AOD Keep-On** and tap **Turn on** or **Turn off**. It shows SystemUI's live value.
+- After every restart it re-applies your last choice by itself, before the first unlock.
+  On the tested phone the flag was back to 1 about 9 s after boot, and the AOD held on the
+  still-locked phone.
+
+Why it works: running `dumpsys` needs `android.permission.DUMP`. ColorOS 17 blocks
+`adb shell pm grant` (and no longer has *Disable permission monitoring* in Developer
+options), but `adb install -g` still grants it during the install, and the build script
+does that. The build creates a signing key in `app\keystore\` (git-ignored). Keep it:
+updates must be signed with the same key, or you have to uninstall first.
+
+Not yet tested: whether the permission survives turning Developer options off. It should,
+since it belongs to the installed app rather than to ADB. Open the app after that restart
+to check that it says ON.
+
 ## Undo everything
 
 ```powershell
 .\restore.ps1      # or double-click restore.cmd
 ```
 
-The only thing these scripts change on the phone is SystemUI's in-memory
-`keep_aod_on` flag. `restore.ps1` turns it off (a reboot does the same), then compares
-AOD-related settings (keys containing `aod`, `doze`, `ambient`, `panoramic`) with the
-"before" snapshot and lists any differences.
+The scripts change two things on the phone: SystemUI's in-memory `keep_aod_on` flag, and,
+if you installed it, the AOD Keep-On app. `restore.ps1` turns the flag off (a reboot does the
+same) and uninstalls the app (otherwise it would turn the flag back on at the next boot).
+It then compares AOD-related settings (keys containing `aod`, `doze`, `ambient`,
+`panoramic`) with the "before" snapshot and lists any differences.
 
 - The first `.\aod.ps1 on` saves that snapshot automatically. `.\backup.ps1` takes one
   by hand. Snapshots go in `backups\`, which is git-ignored because they hold your
@@ -120,14 +155,16 @@ It can't be raised without root:
 
 ## Limitations and FAQ
 
-**Does it survive a restart?** No. `keep_aod_on` is a field in SystemUI's memory.
-`setKeepAodOn` only stores it there, and SystemUI sets it to 0 every time it starts. After a
-reboot (or a SystemUI crash), run `.\aod.ps1 on` again. `.\aod.ps1 status` tells you whether
-it is still active.
+**Does it survive a restart?** The flag doesn't. `keep_aod_on` is a field in SystemUI's
+memory: `setKeepAodOn` only stores it there, and SystemUI sets it to 0 every time it starts.
+The [phone app](#phone-app) sets it again after every restart. With the scripts only, run
+`.\aod.ps1 on` again. A SystemUI crash also clears it, and the app doesn't notice that (open
+it and tap Turn on). `.\aod.ps1 status` or the app shows whether it is active.
 
-**Do I need to keep Developer options on?** Only while running the script. The flag lives in
-SystemUI, and ADB is just the way in, so you can turn USB debugging and Developer options off
-afterwards. You need them on again to re-apply after a reboot.
+**Do I need to keep Developer options on?** With the phone app, only for the one-time
+install. On a OnePlus, turning Developer options off forces a restart, which clears the
+flag; the app sets it again after that restart. With the scripts only, you need USB
+debugging after every restart.
 
 **Does it change the clock-only (partial) AOD?** Not its timeout. The hide that `keep_aod_on`
 skips only runs when the AOD's energy-saving mode is on, and the clock-only style normally has
@@ -142,8 +179,7 @@ and they apply to every AOD style while it is set:
 
 Other limitations:
 
-- **Needs ADB after every reboot.** That means a PC, or Wireless debugging plus an on-phone app
-  (see below).
+- **Scripts need ADB after every reboot.** The phone app doesn't (see [Phone app](#phone-app)).
 - **An update can break it.** This is a debug hook. OnePlus already blocks its neighbours
   (`aod_brightness_debug`, `smt userEnablePanoramicAllDay`) on retail builds, and could do the
   same to `keep_aod_on`. After an update, check with `.\aod.ps1 status`.
@@ -161,14 +197,8 @@ Other limitations:
   run, they kill each other's server, and the phone may ask for USB-debugging approval again.
   Close SuperDisplay before running the script.
 - **Banking apps** sometimes refuse to run while Developer options / USB debugging are on.
-  Turn them off after running the script; the flag stays set.
-
-## Without a PC
-
-The same command can be run on the phone itself over Wireless debugging, for example
-with [Astroisback/oneplus-13r-aod](https://github.com/Astroisback/oneplus-13r-aod)
-(made for the 13R, same command) or Shizuku plus a shell app. These are untested here,
-and Wireless debugging must be turned on again after each reboot.
+  With the phone app installed you can turn them off; the app re-applies the flag after the
+  restart that follows.
 
 ## Credit
 
