@@ -36,6 +36,31 @@ nothing, lock the phone and use `watch` instead:
 23:08:29  timeout fired, skipped (keep_aod_on is active)
 ```
 
+## Undo everything
+
+```powershell
+.\restore.ps1      # or double-click restore.cmd
+```
+
+The only thing these scripts change on the phone is SystemUI's in-memory
+`keep_aod_on` flag. `restore.ps1` turns it off (a reboot does the same), then compares
+AOD-related settings (keys containing `aod`, `doze`, `ambient`, `panoramic`) with the
+"before" snapshot and lists any differences.
+
+- The first `.\aod.ps1 on` saves that snapshot automatically. `.\backup.ps1` takes one
+  by hand. Snapshots go in `backups\`, which is git-ignored because they hold your
+  phone's own settings.
+- Differences usually come from changes you made in Settings, such as switching AOD
+  style, so they are only listed by default. To write the snapshot values back anyway:
+
+  ```powershell
+  .\restore.ps1 -ApplySettings -WhatIf   # preview
+  .\restore.ps1 -ApplySettings
+  ```
+
+- Developer options and USB debugging are never touched. To remove a PC's access, use
+  Developer options → Revoke USB debugging authorizations.
+
 ## How it works
 
 The command is:
